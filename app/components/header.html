@@ -2,26 +2,23 @@
 <html lang="ru">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale = 1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale = 1.0">
 
-    <!-- Берется из js -->
-    <title></title>
-    <link rel="stylesheet" href="css/style.min.css">
+  <title></title> <!-- Берется из js -->
+  <link rel="preload" as="video" href="assets/video/video.mp4"/>
+  <link rel="stylesheet" href="css/style.min.css">
 </head>
 
 <body>
+<div class="grain"></div>
+<div class="vignette"></div>
 
-    <header class="header">
-        <div class="container">
-            <div class="header__left">
-                <a class="header__logo" href="/"></a>
+<header class="header">
+  <div class="container">
 
-                <!--=include menu.html -->
-            </div>
+    <!--=include menu.html -->
 
-            <ul class="menu">
-                <li class="menu-item menu-item--lang text-m"><a href="##">ENG</a></li>
-            </ul>
-        </div>
-    </header>
+    <div class="nav-right" id="sceneCounter">R2/15</div>
+  </div>
+</header>
