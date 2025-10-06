@@ -13,8 +13,7 @@
 
 
 @use "blocks/header";
-// остальные блоки
+@use "blocks/hero";
 
-@use "blocks/footer";
 
 @use 'media/index' as *;
