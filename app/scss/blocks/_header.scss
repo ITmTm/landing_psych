@@ -1,0 +1,32 @@
+.header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 30;
+  font-size: 16px;
+}
+
+.menu {
+  display: flex;
+  gap: 18px;
+
+  &-item {
+    a {
+      color: var(--muted);
+
+      &:hover {
+        color: var(--fg);
+      }
+    }
+
+
+  }
+
+  &-right {
+    color: var(--muted);
+  }
+}
