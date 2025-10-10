@@ -1,16 +1,36 @@
 <!--=include header.html -->
 
 <main class="stage">
-  <div class="hero-media">
-    <video id="bgVideo" class="hero-video" src="assets/video/video.mp4" autoplay muted playsinline loop
-           poster="assets/img/cover.jpg"></video>
-    <div class="hero-gradient"></div>
+  <svg id="texture">
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="4" stitchTiles="stitch"></feTurbulence>
+      <feColorMatrix type="saturate" values="0"></feColorMatrix>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#noise)"></rect>
+  </svg>
+
+  <div class="hero-media" aria-hidden="true">
+    <video
+      id="bgVideo"
+      class="hero-video"
+      autoplay
+      muted
+      playsinline
+      loop
+      preload="metadata"
+      poster="assets/video/video.jpg">
+
+      <!-- Safari/iOS понимают MP4, поэтому первым идёт MP4 -->
+      <source src="assets/video/video.mp4" type="video/mp4">
+      <!-- Хром/Firefox возьмут более лёгкий WebM -->
+      <source src="assets/video/video.webm" type="video/webm">
+    </video>
   </div>
 
 
-  <section class="hero visually-hidden" aria-label="Вступление">
-    <div class="hero-inner container">
-      <h1 class="headline split" data-split> Меня зовут <button class="btn">Вильдан</button>.<span class="bg-inner">Я практикующий психолог/психотерапевт.</span></h1>
+  <section class="hero" aria-label="Вступление">
+    <div class="hero-inner">
+      <h1 class="headline" data-split> Меня зовут <button class="btn">Вильдан</button>. <span class="bg-inner">Я практикующий психолог/психотерапевт.</span></h1>
       <p class="lede" data-reveal>
         <button class="btn">Наверное вы</button> <span class="bg-inner">столкнулись с непреодолимыми трудностями в жизни, поэтому забежали ко мне в гости. Когда-то, я и сам
         искал ответы на волнующие мою нервную систему темы в жизни…</span> <button class="btn">Это НОРМАЛЬНО</button> <span class="bg-inner">обратиться за помощью в трудный
