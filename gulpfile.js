@@ -13,6 +13,13 @@ const svgmin = require('gulp-svgmin'); // оптимизация .svg
 const avif = require('gulp-avif'); // конвертер в avif
 const webp = require('gulp-webp'); // конвертер в webp
 const imagemin = require('gulp-imagemin'); // сжимание картинок
+
+const fs = require('fs');
+const path = require('path'); // сжатие видео
+const shell = require('gulp-shell');
+const rename = require('gulp-rename');
+const ffmpegPath = require('ffmpeg-static'); // путь к бинарнику ffmpeg
+
 const newer = require('gulp-newer'); // кэш
 const svgSprite = require('gulp-svg-sprite'); // объединение svg картинок в 1 файл
 const include = require('gulp-include'); // подключение html к html
@@ -37,6 +44,56 @@ function pages() {
         .pipe(dest('app'))
         .pipe(browserSync.stream())
 }
+
+// вспомогалки для вывода путей
+function relOut(file, ext) {
+    // из app/assets/video/src/foo/bar.mov -> app/assets/video/foo/bar.mp4
+    const rel = path.relative(path.join(__dirname, 'app/assets/video/src'), file.path);
+    return path.join('app/assets/video', rel).replace(path.extname(rel), ext);
+}
+
+/* MP4 (H.264) — быстрый пресет, хорошее качество/вес */
+function videosMp4() {
+    return src('app/assets/video/src/**/*.{mp4,mov,webm}')
+        .pipe(newer({
+            dest: 'app/assets/video',
+            map: (p) => p.replace(/[/\\]src[/\\]/, path.sep).replace(/\.[^.]+$/, '.mp4')
+        }))
+        .pipe(shell([
+            `"${ffmpegPath}" -y -i "<%= file.path %>" ` +
+            `-c:v libx264 -crf 22 -preset veryfast -pix_fmt yuv420p -movflags +faststart ` +
+            `-c:a aac -b:a 128k "<%= relOut(file, '.mp4') %>"`
+        ], { templateData: { relOut } }));
+}
+
+/* WEBM (VP9+Opus) — ещё легче по весу, один проход */
+function videosWebm() {
+    return src('app/assets/video/src/**/*.{mp4,mov,webm}')
+        .pipe(newer({
+            dest: 'app/assets/video',
+            map: (p) => p.replace(/[/\\]src[/\\]/, path.sep).replace(/\.[^.]+$/, '.webm')
+        }))
+        .pipe(shell([
+            `"${ffmpegPath}" -y -i "<%= file.path %>" ` +
+            `-c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 ` +
+            `-c:a libopus -b:a 96k "<%= relOut(file, '.webm') %>"`
+        ], { templateData: { relOut } }));
+}
+
+/* Постер для <video poster="..."> (кадр на 1-й секунде) */
+function videoPosters() {
+    return src('app/assets/video/src/**/*.{mp4,mov,webm}')
+        .pipe(newer({
+            dest: 'app/assets/video',
+            map: (p) => p.replace(/[/\\]src[/\\]/, path.sep).replace(/\.[^.]+$/, '.jpg')
+        }))
+        .pipe(shell([
+            `"${ffmpegPath}" -y -ss 1 -i "<%= file.path %>" -frames:v 1 -q:v 3 -update 1 ` +
+            `"<%= relOut(file, '.jpg') %>"`
+        ], { templateData: { relOut } }));
+}
+
+const videos = parallel(videosMp4, videosWebm, videoPosters);
 
     /*
         Если есть необходимость в модульности (Создание картинок по папкам с секциями)
@@ -80,24 +137,6 @@ function images() {
     return merge(avifStream, webpStream, imgStream, svgStream)
         .pipe(browserSync.stream());
 
-        /*
-            Если нет необходимости придерживаться модульности (Разбивать картинки по папкам - секциями)
-        */
-
-    // return src(['app/images/src/*.*', '!app/images/src/*.svg'])
-    //     .pipe(newer('app/images/'))
-    //     .pipe(avif({ quality: 90 }))
-    //
-    //     .pipe(src('app/images/src/*.*'))
-    //     .pipe(newer('app/images/'))
-    //     .pipe(webp())
-    //
-    //     .pipe(src('app/images/src/*.*'))
-    //     .pipe(newer('app/images/'))
-    //     .pipe(imagemin())
-    //
-    //     .pipe(dest('app/images/'))
-    //     .pipe(browserSync.stream())
 }
 
 function sprite() {
@@ -114,10 +153,11 @@ function sprite() {
 }
 
 function scripts() {
-    return src([
+    const candidates = [
         'node_modules/jquery/dist/jquery.js',
         'node_modules/jquery-ui/dist/jquery-ui.js',
         'node_modules/swiper/swiper-bundle.js',
+
         'app/js/swiper-init.js', // инициализация свайпера
         'app/js/accordion.js', // аккордеоны
         'app/js/cookie.js', // уведомление о куки
@@ -127,30 +167,31 @@ function scripts() {
         'app/js/title.js', // установка title
         'app/js/up-btn.js', // кнопка наверх
         'app/js/main.js' // основной файл javascript
-    ])
+    ];
+
+    const sources = candidates.filter(p => fs.existsSync(p));
+
+    return src(sources, { allowEmpty: true }) // не ругайся, если какой-то файл пропал
         .pipe(concat('main.min.js'))
-        .pipe(uglify({
-            compress: true,
-            mangle: false
-        }))
+        .pipe(uglify({ compress: true, mangle: false }))
         .pipe(dest('app/js'))
-        .pipe(browserSync.stream())
+        .pipe(browserSync.stream());
 }
 
 function styles() {
     return src('app/scss/style.scss')
-        .pipe(autoprefixer({ overrideBrowserslist: ['last 10 version'] }))
-        .pipe(concat('style.min.css'))
+        // с минификацией
+        .pipe(scss({
+            outputStyle: 'compressed'
+        }))
 
         // без минификации
         // .pipe(scss({
         //     outputStyle: 'expanded'
         // }))
 
-        // с минификацией
-        .pipe(scss({
-            outputStyle: 'compressed'
-        }))
+        .pipe(autoprefixer({ overrideBrowserslist: ['last 10 version'] }))
+        .pipe(concat('style.min.css'))
 
         .pipe(dest('app/css'))
         .pipe(browserSync.stream())
@@ -167,6 +208,10 @@ function watching() {
     watch(['app/js/main.js'], scripts);
     watch(['app/components/**/*.html', 'app/pages/**/*.html'], pages);
     watch(['app/*.html']).on('change', browserSync.reload);
+
+    // ВИДЕО: пережимать при изменениях исходников
+    watch(['app/assets/video/src/**/*.{mp4,mov,webm}'], series(videos, browserSync.reload));
+
     watch(['app/upload/**/*'], resources);
 }
 
@@ -185,12 +230,18 @@ function building() {
         // 'app/images/sprite.svg',
         'app/js/main.min.js',
         'app/*.html',
+        'app/assets/**/*',
+        "!app/assets/video/src{,/**}",
+
+        'app/fonts/**/*',
+
         'app/upload/**/*'
     ], { base: 'app' })
         .pipe(dest('dist'))
 }
 
 exports.styles = styles;
+exports.videos = videos;
 exports.images = images;
 exports.pages = pages;
 exports.building = building;
@@ -198,5 +249,5 @@ exports.sprite = sprite;
 exports.scripts = scripts;
 exports.watching = watching;
 
-exports.build = series(cleanDist, building);
-exports.default = series(styles, images, scripts, pages, watching);
+exports.build = series(cleanDist, parallel(styles, scripts, images, videos, pages), building);
+exports.default = series(styles, videos, images, scripts, pages, watching);
